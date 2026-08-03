@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# angular build output
+dist/
+.angular/
+.angular/cache/
+out-tsc/
+
+# coverage and test artifacts
+coverage/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# editor/system
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

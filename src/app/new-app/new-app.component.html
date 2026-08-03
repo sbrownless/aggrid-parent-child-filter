@@ -1,0 +1,30 @@
+<div class="new-app-page">
+  <h1>{{ title }}</h1>
+  <div class="search-box">
+    <input
+      type="text"
+      [value]="searchService.text()"
+      (input)="onSearchInput($any($event.target).value)"
+      placeholder="Search parent or detail rows"
+      aria-label="Catalog search"
+    />
+    <button
+      *ngIf="searchService.hasText()"
+      type="button"
+      class="clear-search"
+      (click)="clearSearch()"
+      aria-label="Clear search"
+    >
+      x
+    </button>
+  </div>
+  <p>Expand a row to view detail entries.</p>
+
+  <ag-grid-angular
+    class="ag-theme-alpine catalog-grid"
+    [gridOptions]="gridOptions"
+  >
+  </ag-grid-angular>
+
+  <a routerLink="/">Back to home</a>
+</div>

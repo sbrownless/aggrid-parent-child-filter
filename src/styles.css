@@ -1,0 +1,4 @@
+html, body { height: 100%; margin: 0; }
+.ag-theme-alpine { height: 100%; width: 100%; }
+.search-box { margin-bottom: 10px; }
+input { width: 300px; padding: 6px; font-size: 14px; }

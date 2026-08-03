@@ -1,0 +1,10 @@
+{
+  "files.exclude": {
+    "**/.angular": true,
+    "**/.angular/**": true
+  },
+  "search.exclude": {
+    "**/.angular": true,
+    "**/.angular/**": true
+  }
+}

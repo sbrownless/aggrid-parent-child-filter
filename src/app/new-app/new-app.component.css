@@ -1,0 +1,62 @@
+.new-app-page {
+  padding: 2rem;
+  font-family: Arial, sans-serif;
+}
+
+.new-app-page h1 {
+  margin-bottom: 0.5rem;
+}
+
+.search-box {
+  position: relative;
+  width: min(520px, 100%);
+  margin: 0.75rem 0;
+}
+
+.search-box input {
+  width: 100%;
+  height: 2.5rem;
+  padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+  border: 1px solid #c9d1d9;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+}
+
+.clear-search {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #5f6b7a;
+  font-size: 1rem;
+  line-height: 1;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.clear-search:hover {
+  background: #eef2f7;
+}
+
+.catalog-grid {
+  width: 100%;
+  height: 560px;
+  margin-top: 1rem;
+}
+
+.new-app-page a {
+  display: inline-block;
+  margin-top: 1rem;
+  color: #1976d2;
+  text-decoration: none;
+}

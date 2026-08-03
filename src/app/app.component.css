@@ -1,0 +1,22 @@
+.search-box {
+  margin-bottom: 1rem;
+}
+
+.search-box input {
+  width: 100%;
+  max-width: 320px;
+  padding: 0.5rem;
+}
+
+.nav-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: #1976d2;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
+}
+
