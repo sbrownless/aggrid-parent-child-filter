@@ -40,6 +40,6 @@ For full architecture and rationale, see [README.md](README.md).
 
 ## Haystack Notes
 
-1. Haystacks are precomputed for parent and detail rows in [src/app/new-app/catalog-search-index.service.ts](src/app/new-app/catalog-search-index.service.ts).
+1. Haystacks are precomputed for parent and detail rows in [src/app/new-app/search-index/catalog-search-index.service.ts](src/app/new-app/search-index/catalog-search-index.service.ts).
 2. Text is normalized to lowercase with collapsed whitespace.
 3. Fields are joined using `\0` to prevent cross-field phrase matches.

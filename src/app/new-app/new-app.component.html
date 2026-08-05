@@ -4,7 +4,7 @@
     <input
       type="text"
       [value]="searchService.text()"
-      (input)="onSearchInput($any($event.target).value)"
+      (input)="onSearchInput($any($event).target.value)"
       placeholder="Search parent or detail rows"
       aria-label="Catalog search"
     />

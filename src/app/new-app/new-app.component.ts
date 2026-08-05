@@ -1,18 +1,12 @@
-import { Component, effect, inject } from '@angular/core';
-import { ColDef, GridApi, GridOptions, GridReadyEvent, IDetailCellRendererParams } from 'ag-grid-community';
-import 'ag-grid-enterprise';
-import { catalogDetailModel } from '../catalogEntry.model';
+import { Component, inject } from '@angular/core';
+import { ColDef, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-community';
 import { CatalogSearchService } from './catalog-search.service';
+import { CATALOG_SEARCH_INDEX_CONFIG } from './search-index/catalog-search-index.config';
 import {
   CatalogSearchIndexService,
   SearchableCatalogDetail,
   SearchableCatalogEntry
-} from './catalog-search-index.service';
-
-type DetailCellRendererParams = Pick<
-  IDetailCellRendererParams<SearchableCatalogEntry, SearchableCatalogDetail>,
-  'detailGridOptions' | 'getDetailRowData' | 'refreshStrategy'
->;
+} from './search-index/catalog-search-index.service';
 
 @Component({
   selector: 'app-new-app',
@@ -24,13 +18,12 @@ export class NewAppComponent {
   readonly searchIndexService = inject(CatalogSearchIndexService);
   title = 'Catalog Entries';
   private gridApi?: GridApi<SearchableCatalogEntry>;
+  private readonly searchConfig = CATALOG_SEARCH_INDEX_CONFIG;
+  private readonly originalDetailLookup = new Map<string, SearchableCatalogDetail[]>();
+  private searchRefreshHandle?: number;
 
   constructor() {
-    this.searchIndexService.rebuildSearchIndex(this.rowData);
-
-    effect(() => {
-      this.applySearch(this.searchService.normalizedText());
-    });
+    this.searchIndexService.rebuildSearchIndex(this.rowData, this.searchConfig);
   }
 
   masterColumnDefs: ColDef<SearchableCatalogEntry>[] = [
@@ -55,6 +48,22 @@ export class NewAppComponent {
     { field: 'changeTicketNumber', headerName: 'Ticket', minWidth: 140 },
     { field: 'createdBy', headerName: 'Created By', minWidth: 140 },
     { field: 'lastUpdatedBy', headerName: 'Last Updated By', minWidth: 160 },
+    {
+      field: '_matchMode',
+      headerName: 'Match Mode',
+      minWidth: 130,
+      maxWidth: 150,
+      sortable: false,
+      filter: false
+    },
+    {
+      headerName: 'Debug Match',
+      minWidth: 150,
+      maxWidth: 180,
+      sortable: false,
+      filter: false,
+      valueGetter: params => this.getDebugMatchSummary(params.data as SearchableCatalogEntry | undefined)
+    },
     {
       field: 'lastUpdated',
       headerName: 'Last Updated',
@@ -159,18 +168,10 @@ export class NewAppComponent {
     }
   ];
 
-  detailCellRendererParams: DetailCellRendererParams = {
-    detailGridOptions: {
-      columnDefs: this.detailColumnDefs,
-      defaultColDef: this.detailDefaultColDef,
-      domLayout: 'autoHeight'
-    },
-    getDetailRowData: params => {
-      const mode = params.data._matchMode ?? 'none';
-      const fullDetails = params.data.catalogDetails ?? [];
-      params.successCallback(mode === 'child-only' ? params.data._matchingChildren ?? [] : fullDetails);
-    },
-    refreshStrategy: 'rows'
+  detailGridOptions: GridOptions<SearchableCatalogDetail> = {
+    columnDefs: this.detailColumnDefs,
+    defaultColDef: this.detailDefaultColDef,
+    domLayout: 'autoHeight'
   };
 
   gridOptions: GridOptions<SearchableCatalogEntry> = {
@@ -178,8 +179,14 @@ export class NewAppComponent {
     defaultColDef: this.masterDefaultColDef,
     rowData: this.rowData,
     masterDetail: true,
-    detailRowAutoHeight: true,
-    detailCellRendererParams: this.detailCellRendererParams,
+    detailCellRendererParams: {
+      detailGridOptions: this.detailGridOptions,
+      refreshStrategy: 'everything' as const,
+      getDetailRowData: (params: { data: SearchableCatalogEntry | undefined; successCallback: (rows: SearchableCatalogDetail[]) => void }) => {
+        const row = params.data as SearchableCatalogEntry | undefined;
+        params.successCallback(this.getVisibleDetailRows(row));
+      }
+    },
     isRowMaster: dataItem => !!dataItem?.catalogDetails?.length,
     isExternalFilterPresent: () => this.searchService.hasText(),
     doesExternalFilterPass: node => {
@@ -196,14 +203,16 @@ export class NewAppComponent {
 
   onSearchInput(value: string) {
     this.searchService.setText(value);
+    this.applySearch(this.searchService.normalizedText());
   }
 
   clearSearch() {
     this.searchService.clear();
+    this.applySearch('');
   }
 
   reindexAfterDataChange() {
-    this.searchIndexService.rebuildSearchIndex(this.rowData);
+    this.searchIndexService.rebuildSearchIndex(this.rowData, this.searchConfig);
     this.applySearch(this.searchService.normalizedText());
   }
 
@@ -212,34 +221,107 @@ export class NewAppComponent {
     this.applySearch(this.searchService.normalizedText());
   }
 
+  private getDebugMatchSummary(entry: SearchableCatalogEntry | undefined): string {
+    if (!entry) {
+      return '';
+    }
+
+    const searchText = this.searchService.normalizedText();
+    if (!searchText) {
+      return 'none:0';
+    }
+
+    const matchInfo = this.searchIndexService.getMatchInfo(entry, searchText, this.searchConfig);
+    return `${matchInfo.matchMode}:${matchInfo.matchingChildren?.length ?? 0}`;
+  }
+
+  private getVisibleDetailRows(row: SearchableCatalogEntry | undefined): SearchableCatalogDetail[] {
+    if (!row?.uniqueId) {
+      return [];
+    }
+
+    const searchText = this.searchService.normalizedText();
+    const matchInfo = this.searchIndexService.getMatchInfo(row, searchText, this.searchConfig);
+    const originalDetails = this.originalDetailLookup.get(row.uniqueId) ?? [...(row.catalogDetails ?? [])];
+
+    if (!searchText || matchInfo.matchMode !== 'child-only') {
+      return [...originalDetails];
+    }
+
+    return [...(matchInfo.matchingChildren ?? [])];
+  }
+
   private applySearch(searchText: string) {
+    if (this.searchRefreshHandle) {
+      window.clearTimeout(this.searchRefreshHandle);
+    }
+
+    this.searchRefreshHandle = window.setTimeout(() => {
+      this.performSearchUpdate(searchText);
+    }, 150);
+  }
+
+  private performSearchUpdate(searchText: string) {
+    this.searchRefreshHandle = undefined;
+
     for (const entry of this.rowData) {
-      this.searchIndexService.ensureIndexed(entry);
-      const matchInfo = this.searchIndexService.getMatchInfo(entry, searchText);
+      this.searchIndexService.ensureIndexed(entry, this.searchConfig);
+      const matchInfo = this.searchIndexService.getMatchInfo(entry, searchText, this.searchConfig);
       entry._matchMode = matchInfo.matchMode;
-      entry._matchingChildren = matchInfo.matchingChildren;
+      entry._matchingChildren = matchInfo.matchingChildren as SearchableCatalogDetail[] | undefined;
+
+      const originalDetails = this.originalDetailLookup.get(entry.uniqueId) ?? [...(entry.catalogDetails ?? [])];
+      if (!this.originalDetailLookup.has(entry.uniqueId)) {
+        this.originalDetailLookup.set(entry.uniqueId, originalDetails);
+      }
+
     }
 
     if (!this.gridApi) {
       return;
     }
 
-    this.gridApi.onFilterChanged();
-    this.gridApi.forEachNode(node => {
-      node.setExpanded(false);
-    });
-
-    if (!searchText) {
-      return;
-    }
-
-    this.gridApi.forEachNode(node => {
-      const data = node.data;
-      if (!data) {
+    window.setTimeout(() => {
+      if (!this.gridApi) {
         return;
       }
 
-      node.setExpanded((data._matchMode ?? 'none') !== 'none');
-    });
+      this.gridApi!.onFilterChanged();
+      this.gridApi!.refreshCells({ force: true });
+
+      const rowsToExpand = new Set<string>();
+      this.gridApi!.forEachNode(node => {
+        const data = node.data;
+        if (!data) {
+          return;
+        }
+
+        const shouldExpand = !!searchText && (data._matchMode ?? 'none') !== 'none' && !!data.catalogDetails?.length;
+        if (shouldExpand) {
+          rowsToExpand.add(data.uniqueId);
+        }
+      });
+
+      this.gridApi!.forEachNode(node => {
+        node.setExpanded(false);
+      });
+
+      window.setTimeout(() => {
+        if (!this.gridApi) {
+          return;
+        }
+
+        this.gridApi!.forEachNode(node => {
+          const data = node.data;
+          if (!data) {
+            return;
+          }
+
+          if (rowsToExpand.has(data.uniqueId)) {
+            node.setExpanded(true);
+          }
+        });
+      }, 0);
+    }, 0);
   }
 }
