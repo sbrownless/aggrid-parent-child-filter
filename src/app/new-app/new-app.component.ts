@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { ColDef, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-community';
+import { ColDef, GridOptions } from 'ag-grid-community';
 import { CatalogSearchService } from './catalog-search.service';
 import { CATALOG_SEARCH_INDEX_CONFIG } from './search-index/catalog-search-index.config';
 import {
@@ -7,6 +7,7 @@ import {
   SearchableCatalogDetail,
   SearchableCatalogEntry
 } from './search-index/catalog-search-index.service';
+import { createMasterDetailSearchSetup } from './search-index/master-detail-search.helper';
 
 @Component({
   selector: 'app-new-app',
@@ -17,10 +18,8 @@ export class NewAppComponent {
   readonly searchService = inject(CatalogSearchService);
   readonly searchIndexService = inject(CatalogSearchIndexService);
   title = 'Catalog Entries';
-  private gridApi?: GridApi<SearchableCatalogEntry>;
   private readonly searchConfig = CATALOG_SEARCH_INDEX_CONFIG;
   private readonly originalDetailLookup = new Map<string, SearchableCatalogDetail[]>();
-  private searchRefreshHandle?: number;
 
   constructor() {
     this.searchIndexService.rebuildSearchIndex(this.rowData, this.searchConfig);
@@ -168,57 +167,32 @@ export class NewAppComponent {
     }
   ];
 
-  detailGridOptions: GridOptions<SearchableCatalogDetail> = {
-    columnDefs: this.detailColumnDefs,
-    defaultColDef: this.detailDefaultColDef,
-    domLayout: 'autoHeight'
-  };
+  readonly searchSetup = createMasterDetailSearchSetup(
+    this.rowData,
+    this.searchConfig,
+    this.searchService,
+    this.searchIndexService,
+    row => this.getVisibleDetailRows(row),
+    row => row?.catalogDetails ?? [],
+    row => row.uniqueId,
+    this.masterColumnDefs,
+    this.detailColumnDefs,
+    this.masterDefaultColDef,
+    this.detailDefaultColDef
+  );
 
-  gridOptions: GridOptions<SearchableCatalogEntry> = {
-    columnDefs: this.masterColumnDefs,
-    defaultColDef: this.masterDefaultColDef,
-    rowData: this.rowData,
-    masterDetail: true,
-    detailCellRendererParams: {
-      detailGridOptions: this.detailGridOptions,
-      refreshStrategy: 'everything' as const,
-      getDetailRowData: (params: { data: SearchableCatalogEntry | undefined; successCallback: (rows: SearchableCatalogDetail[]) => void }) => {
-        const row = params.data as SearchableCatalogEntry | undefined;
-        params.successCallback(this.getVisibleDetailRows(row));
-      }
-    },
-    isRowMaster: dataItem => !!dataItem?.catalogDetails?.length,
-    isExternalFilterPresent: () => this.searchService.hasText(),
-    doesExternalFilterPass: node => {
-      const data = node.data;
-      if (!data) {
-        return false;
-      }
-
-      return this.searchService.hasText() ? (data._matchMode ?? 'none') !== 'none' : true;
-    },
-    animateRows: true,
-    onGridReady: event => this.onGridReady(event)
-  };
+  gridOptions: GridOptions<SearchableCatalogEntry> = this.searchSetup.gridOptions;
 
   onSearchInput(value: string) {
-    this.searchService.setText(value);
-    this.applySearch(this.searchService.normalizedText());
+    this.searchSetup.onSearchInput(value);
   }
 
   clearSearch() {
-    this.searchService.clear();
-    this.applySearch('');
+    this.searchSetup.clearSearch();
   }
 
   reindexAfterDataChange() {
-    this.searchIndexService.rebuildSearchIndex(this.rowData, this.searchConfig);
-    this.applySearch(this.searchService.normalizedText());
-  }
-
-  private onGridReady(event: GridReadyEvent<SearchableCatalogEntry>) {
-    this.gridApi = event.api;
-    this.applySearch(this.searchService.normalizedText());
+    this.searchSetup.reindexAfterDataChange();
   }
 
   private getDebugMatchSummary(entry: SearchableCatalogEntry | undefined): string {
@@ -244,84 +218,14 @@ export class NewAppComponent {
     const matchInfo = this.searchIndexService.getMatchInfo(row, searchText, this.searchConfig);
     const originalDetails = this.originalDetailLookup.get(row.uniqueId) ?? [...(row.catalogDetails ?? [])];
 
+    if (!this.originalDetailLookup.has(row.uniqueId)) {
+      this.originalDetailLookup.set(row.uniqueId, originalDetails);
+    }
+
     if (!searchText || matchInfo.matchMode !== 'child-only') {
       return [...originalDetails];
     }
 
     return [...(matchInfo.matchingChildren ?? [])];
-  }
-
-  private applySearch(searchText: string) {
-    if (this.searchRefreshHandle) {
-      window.clearTimeout(this.searchRefreshHandle);
-    }
-
-    this.searchRefreshHandle = window.setTimeout(() => {
-      this.performSearchUpdate(searchText);
-    }, 150);
-  }
-
-  private performSearchUpdate(searchText: string) {
-    this.searchRefreshHandle = undefined;
-
-    for (const entry of this.rowData) {
-      this.searchIndexService.ensureIndexed(entry, this.searchConfig);
-      const matchInfo = this.searchIndexService.getMatchInfo(entry, searchText, this.searchConfig);
-      entry._matchMode = matchInfo.matchMode;
-      entry._matchingChildren = matchInfo.matchingChildren as SearchableCatalogDetail[] | undefined;
-
-      const originalDetails = this.originalDetailLookup.get(entry.uniqueId) ?? [...(entry.catalogDetails ?? [])];
-      if (!this.originalDetailLookup.has(entry.uniqueId)) {
-        this.originalDetailLookup.set(entry.uniqueId, originalDetails);
-      }
-
-    }
-
-    if (!this.gridApi) {
-      return;
-    }
-
-    window.setTimeout(() => {
-      if (!this.gridApi) {
-        return;
-      }
-
-      this.gridApi!.onFilterChanged();
-      this.gridApi!.refreshCells({ force: true });
-
-      const rowsToExpand = new Set<string>();
-      this.gridApi!.forEachNode(node => {
-        const data = node.data;
-        if (!data) {
-          return;
-        }
-
-        const shouldExpand = !!searchText && (data._matchMode ?? 'none') !== 'none' && !!data.catalogDetails?.length;
-        if (shouldExpand) {
-          rowsToExpand.add(data.uniqueId);
-        }
-      });
-
-      this.gridApi!.forEachNode(node => {
-        node.setExpanded(false);
-      });
-
-      window.setTimeout(() => {
-        if (!this.gridApi) {
-          return;
-        }
-
-        this.gridApi!.forEachNode(node => {
-          const data = node.data;
-          if (!data) {
-            return;
-          }
-
-          if (rowsToExpand.has(data.uniqueId)) {
-            node.setExpanded(true);
-          }
-        });
-      }, 0);
-    }, 0);
   }
 }

@@ -1,0 +1,14 @@
+<div class="invoices-page">
+  <h2>Invoices</h2>
+  <div class="search-box">
+    <input
+      type="text"
+      [value]="searchService.text()"
+      (input)="onSearchInput($any($event).target.value)"
+      placeholder="Search invoices or line items"
+      aria-label="Invoice search"
+    />
+    <button *ngIf="searchService.hasText()" type="button" (click)="clearSearch()">x</button>
+  </div>
+  <ag-grid-angular class="ag-theme-alpine" [gridOptions]="gridOptions"></ag-grid-angular>
+</div>

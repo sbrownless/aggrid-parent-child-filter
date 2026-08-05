@@ -1,0 +1,24 @@
+.invoices-page {
+  padding: 16px;
+}
+
+.search-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.search-box input {
+  flex: 1;
+  padding: 8px 10px;
+}
+
+.search-box button {
+  padding: 0 10px;
+}
+
+.invoices-grid {
+  width: 100%;
+  height: 560px;
+  display: block;
+}
