@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { ColDef, ExcelCell, ExcelRow, GridApi, GridOptions, GridReadyEvent, ProcessRowGroupForExportParams } from 'ag-grid-community';
 import 'ag-grid-enterprise';
 import { CatalogSearchService } from './catalog-search.service';
@@ -19,6 +19,7 @@ export class NewAppComponent {
   readonly searchService = inject(CatalogSearchService);
   readonly searchIndexService = inject(CatalogSearchIndexService);
   title = 'Catalog Entries';
+  readonly displayName = input<string>('Default Name');
   exportAllData = true;
   currentExportFilteredOnly = false;
   private gridApi?: GridApi<SearchableCatalogEntry>;
@@ -214,7 +215,7 @@ export class NewAppComponent {
     const useFilteredExport = exportFilteredData ?? !this.exportAllData;
     this.currentExportFilteredOnly = useFilteredExport;
     this.gridApi?.exportDataAsExcel({
-      fileName: 'catalog-entries.xlsx',
+      fileName: this.getExportFileName(),
       exportedRows: useFilteredExport ? 'filteredAndSorted' : 'all',
       getCustomContentBelowRow: params => this.getDetailRowsForExcel(params)
     });
@@ -320,5 +321,15 @@ export class NewAppComponent {
         value: value === null || value === undefined ? '' : String(value)
       }
     };
+  }
+
+  private getExportFileName(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const suffix = `${year}-${day}-${month}`;
+
+    return `Catalog entries for ${this.displayName()}-${suffix}.xlsx`;
   }
 }
