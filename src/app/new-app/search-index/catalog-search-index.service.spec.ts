@@ -14,12 +14,14 @@ describe('CatalogSearchIndexService', () => {
 
   const baseDetails: SearchableCatalogDetail[] = [
     {
+      authorisedBy: 'The Manager',
       updatedBy: 'Alice',
       fieldChanged: 'status',
       originalValue: 'Pending',
       newValue: 'Approved'
     },
     {
+      authorisedBy: 'The Manager',
       updatedBy: 'Bob',
       fieldChanged: 'owner',
       originalValue: 'Team A',

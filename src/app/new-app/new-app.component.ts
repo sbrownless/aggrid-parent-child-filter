@@ -16,6 +16,16 @@ import { createMasterDetailSearchSetup } from './search-index/master-detail-sear
   styleUrls: ['./new-app.component.css']
 })
 export class NewAppComponent {
+  static readonly MASTER_DATE_EXCEL_EXPORT_FIELDS = [
+    'uniqueId',
+    'status',
+    'changeType',
+    'changeTicketNumber',
+    'createdBy',
+    'lastUpdatedBy',
+    'lastUpdated'
+  ];
+
   readonly searchService = inject(CatalogSearchService);
   readonly searchIndexService = inject(CatalogSearchIndexService);
   title = 'Catalog Entries';
@@ -84,6 +94,7 @@ export class NewAppComponent {
   ];
 
   detailColumnDefs: ColDef<SearchableCatalogDetail>[] = [
+    { field: 'authorisedBy', headerName: 'Authorised By', minWidth: 150 },
     { field: 'fieldChanged', headerName: 'Field Changed', minWidth: 170 },
     { field: 'originalValue', headerName: 'Original Value', minWidth: 160 },
     { field: 'newValue', headerName: 'New Value', minWidth: 160 },
@@ -119,12 +130,14 @@ export class NewAppComponent {
       lastUpdated: new Date('2026-07-18T09:22:00'),
       catalogDetails: [
         {
+          authorisedBy: 'The Manager',
           fieldChanged: 'status',
           originalValue: 'Pending',
           newValue: 'Approved',
           updatedBy: 'adoe'
         },
         {
+          authorisedBy: 'The Manager',
           fieldChanged: 'owner',
           originalValue: 'team-a',
           newValue: 'team-b',
@@ -142,6 +155,7 @@ export class NewAppComponent {
       lastUpdated: new Date('2026-07-24T16:10:00'),
       catalogDetails: [
         {
+          authorisedBy: 'The Manager',
           fieldChanged: 'description',
           originalValue: '',
           newValue: 'Initial description',
@@ -159,12 +173,14 @@ export class NewAppComponent {
       lastUpdated: new Date('2026-07-31T11:47:00'),
       catalogDetails: [
         {
+          authorisedBy: 'The Manager',
           fieldChanged: 'status',
           originalValue: 'Pending',
           newValue: 'Rejected',
           updatedBy: 'ops-user'
         },
         {
+          authorisedBy: 'The Manager',
           fieldChanged: 'comments',
           originalValue: 'N/A',
           newValue: 'Missing approval evidence',
@@ -217,6 +233,7 @@ export class NewAppComponent {
     this.gridApi?.exportDataAsExcel({
       fileName: this.getExportFileName(),
       exportedRows: useFilteredExport ? 'filteredAndSorted' : 'all',
+      columnKeys: NewAppComponent.MASTER_DATE_EXCEL_EXPORT_FIELDS,
       getCustomContentBelowRow: params => this.getDetailRowsForExcel(params)
     });
   }

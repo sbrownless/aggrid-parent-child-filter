@@ -10,6 +10,7 @@ export interface catalogEntryModel {
 }
 
 export interface catalogDetailModel {
+  authorisedBy: string;
   updatedBy: string;
   fieldChanged: string;
   originalValue: string;
