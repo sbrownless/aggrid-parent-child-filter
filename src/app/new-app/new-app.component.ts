@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
-import { ColDef, GridOptions } from 'ag-grid-community';
+import { ColDef, ExcelCell, ExcelRow, GridApi, GridOptions, GridReadyEvent, ProcessRowGroupForExportParams } from 'ag-grid-community';
+import 'ag-grid-enterprise';
 import { CatalogSearchService } from './catalog-search.service';
 import { CATALOG_SEARCH_INDEX_CONFIG } from './search-index/catalog-search-index.config';
 import {
@@ -18,6 +19,9 @@ export class NewAppComponent {
   readonly searchService = inject(CatalogSearchService);
   readonly searchIndexService = inject(CatalogSearchIndexService);
   title = 'Catalog Entries';
+  exportAllData = true;
+  currentExportFilteredOnly = false;
+  private gridApi?: GridApi<SearchableCatalogEntry>;
   private readonly searchConfig = CATALOG_SEARCH_INDEX_CONFIG;
   private readonly originalDetailLookup = new Map<string, SearchableCatalogDetail[]>();
 
@@ -90,7 +94,8 @@ export class NewAppComponent {
     minWidth: 120,
     resizable: true,
     sortable: true,
-    filter: true
+    filter: true,
+    headerClass: 'excel-header-bold'
   };
 
   detailDefaultColDef: ColDef<SearchableCatalogDetail> = {
@@ -98,7 +103,8 @@ export class NewAppComponent {
     minWidth: 120,
     resizable: true,
     sortable: true,
-    filter: true
+    filter: true,
+    headerClass: 'excel-header-bold'
   };
 
   rowData: SearchableCatalogEntry[] = [
@@ -181,7 +187,15 @@ export class NewAppComponent {
     this.detailDefaultColDef
   );
 
-  gridOptions: GridOptions<SearchableCatalogEntry> = this.searchSetup.gridOptions;
+  gridOptions: GridOptions<SearchableCatalogEntry> = {
+    ...this.searchSetup.gridOptions,
+    excelStyles: [
+      {
+        id: 'excel-header-bold',
+        font: { bold: true }
+      }
+    ]
+  };
 
   onSearchInput(value: string) {
     this.searchSetup.onSearchInput(value);
@@ -189,6 +203,29 @@ export class NewAppComponent {
 
   clearSearch() {
     this.searchSetup.clearSearch();
+  }
+
+  onGridReady(event: GridReadyEvent<SearchableCatalogEntry>) {
+    this.gridApi = event.api;
+  }
+
+  exportToExcel(event: Event, exportFilteredData?: boolean) {
+    event.preventDefault();
+    const useFilteredExport = exportFilteredData ?? !this.exportAllData;
+    this.currentExportFilteredOnly = useFilteredExport;
+    this.gridApi?.exportDataAsExcel({
+      fileName: 'catalog-entries.xlsx',
+      exportedRows: useFilteredExport ? 'filteredAndSorted' : 'all',
+      getCustomContentBelowRow: params => this.getDetailRowsForExcel(params)
+    });
+  }
+
+  get exportModeLabel(): string {
+    return this.exportAllData ? 'Download All data' : 'Download Filtered data';
+  }
+
+  canExport(): boolean {
+    return !!this.gridApi;
   }
 
   reindexAfterDataChange() {
@@ -227,5 +264,61 @@ export class NewAppComponent {
     }
 
     return [...(matchInfo.matchingChildren ?? [])];
+  }
+
+  private getDetailRowsForExcel(params: ProcessRowGroupForExportParams): ExcelRow[] {
+    const row = params.node.data as SearchableCatalogEntry | undefined;
+    const details = this.currentExportFilteredOnly ? this.getVisibleDetailRows(row) : [...(row?.catalogDetails ?? [])];
+    if (!details.length) {
+      return [];
+    }
+
+    const rows: ExcelRow[] = [
+      {
+        outlineLevel: 1,
+        cells: [
+          this.excelCell(''),
+          this.excelCell(`Detail rows for ${row?.uniqueId ?? 'entry'}`, 'excel-header-bold'),
+          this.excelCell(''),
+          this.excelCell(''),
+          this.excelCell('')
+        ]
+      },
+      {
+        outlineLevel: 1,
+        cells: [
+          this.excelCell(''),
+          this.excelCell('Field Changed', 'excel-header-bold'),
+          this.excelCell('Original Value', 'excel-header-bold'),
+          this.excelCell('New Value', 'excel-header-bold'),
+          this.excelCell('Updated By', 'excel-header-bold')
+        ]
+      }
+    ];
+
+    for (const detail of details) {
+      rows.push({
+        outlineLevel: 1,
+        cells: [
+          this.excelCell(''),
+          this.excelCell(detail.fieldChanged),
+          this.excelCell(detail.originalValue),
+          this.excelCell(detail.newValue),
+          this.excelCell(detail.updatedBy)
+        ]
+      });
+    }
+
+    return rows;
+  }
+
+  private excelCell(value: unknown, styleId?: string): ExcelCell {
+    return {
+      styleId,
+      data: {
+        type: 'String',
+        value: value === null || value === undefined ? '' : String(value)
+      }
+    };
   }
 }

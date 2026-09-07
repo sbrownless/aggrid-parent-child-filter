@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { FormsModule } from '@angular/forms';
 import { RouterModule, Routes } from '@angular/router';
 import { AgGridModule } from 'ag-grid-angular';
 import { AppComponent } from './app.component';
@@ -19,7 +20,7 @@ const routes: Routes = [
 
 @NgModule({
   declarations: [AppComponent, NewAppComponent, InvoicesComponent],
-  imports: [BrowserModule, AgGridModule, RouterModule.forRoot(routes)],
+  imports: [BrowserModule, FormsModule, AgGridModule, RouterModule.forRoot(routes)],
   bootstrap: [AppComponent]
 })
 export class AppModule {}

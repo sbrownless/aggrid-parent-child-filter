@@ -20,11 +20,40 @@
   </div>
   <p>Expand a row to view detail entries.</p>
 
+  <div class="grid-actions">
+    <label class="export-filter-toggle">
+      <input type="checkbox" [(ngModel)]="exportAllData" />
+      <span class="toggle-slider" aria-hidden="true"></span>
+      <span class="toggle-legend">{{ exportModeLabel }}</span>
+    </label>
+    <a
+      href="#"
+      class="download-link"
+      [class.disabled]="!canExport()"
+      [attr.aria-disabled]="!canExport()"
+      (click)="exportToExcel($event)"
+      title="Download as Excel"
+    >
+      <svg
+        class="download-icon"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          d="M11 3h2v8.17l2.59-2.58L17 10l-5 5-5-5 1.41-1.41L11 11.17V3zm-7 13h16v5H4v-5zm2 2v1h12v-1H6z"
+        ></path>
+      </svg>
+      Download data (.xlsx)
+    </a>
+  </div>
+
   <ag-grid-angular
     class="ag-theme-alpine catalog-grid"
     [gridOptions]="gridOptions"
+    (gridReady)="onGridReady($event)"
   >
   </ag-grid-angular>
 
-  <a routerLink="/">Back to home</a>
+  <a routerLink="/" class="back-home-link">Back to home</a>
 </div>

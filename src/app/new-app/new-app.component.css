@@ -51,10 +51,93 @@
 .catalog-grid {
   width: 100%;
   height: 560px;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
 }
 
-.new-app-page a {
+.grid-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.export-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #334155;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.export-filter-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 2.15rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transition: background-color 0.2s ease;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  top: 0.13rem;
+  left: 0.13rem;
+  width: 0.94rem;
+  height: 0.94rem;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.export-filter-toggle input:checked + .toggle-slider {
+  background: #0ea5e9;
+}
+
+.export-filter-toggle input:checked + .toggle-slider::before {
+  transform: translateX(0.95rem);
+}
+
+.toggle-legend {
+  user-select: none;
+}
+
+.download-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #1976d2;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.download-link:hover {
+  text-decoration: underline;
+}
+
+.download-link.disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  text-decoration: none;
+}
+
+.download-icon {
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+}
+
+.back-home-link {
   display: inline-block;
   margin-top: 1rem;
   color: #1976d2;
