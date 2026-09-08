@@ -101,6 +101,10 @@ export class NewAppComponent {
     { field: 'updatedBy', headerName: 'Updated By', minWidth: 140 }
   ];
 
+  readonly masterColumnCount = this.masterColumnDefs.length;
+  readonly detailColumnCount = this.detailColumnDefs.length;
+  readonly maxColumnCount = Math.max(this.masterColumnCount, this.detailColumnCount);
+
   masterDefaultColDef: ColDef<SearchableCatalogEntry> = {
     flex: 1,
     minWidth: 120,
